@@ -57,7 +57,7 @@ class CustomGPT(nn.Module):
         # Token embedding + absolute position encoding
         x = self.embeddings[idx] + self.pos_embeddings[:T]
 
-        # --- Block 1: Causal Self-Attention (with Residual Connection & LayerNorm) ---
+        # --- Block 1: Causal Self-Attention ---
         x_norm = self.ln1(x)
         q = x_norm @ self.Wq
         k = x_norm @ self.Wk
@@ -75,3 +75,46 @@ class CustomGPT(nn.Module):
         
         # Residual connection 1
         x = x + attn_out
+
+        # --- Block 2: MLP Block ---
+        x = x + self.mlp(self.ln2(x))
+
+        # Output Logits
+        logits = x @ self.Wout
+        return logits
+
+
+# ==========================================
+# 3. 測試執行區塊（這是原本缺少的啟動開關！）
+# ==========================================
+if __name__ == "__main__":
+    print("====== 正在初始化 GPT 2.0 模型 ======")
+    
+    # 準備測試文本
+    sample_text = "Hello GPT! This is a simple language model implementation text."
+    
+    # 1. 初始化 Tokenizer
+    tokenizer = SimpleTokenizer(sample_text)
+    print(f"成功建立詞表！詞表大小 (Vocab Size): {tokenizer.vocab_size}")
+    
+    # 2. 設定模型參數並建立模型
+    embed_dim = 32
+    seq_len = 16
+    model = CustomGPT(vocab_size=tokenizer.vocab_size, embed_dim=embed_dim, seq_len=seq_len)
+    
+    # 3. 將測試文字轉成數字矩陣 (Tensor) 餵給模型
+    test_input = "Hello GPT!"
+    encoded_input = tokenizer.encode(test_input)
+    # 轉成 PyTorch 需要的維度 (Batch_size=1, Sequence_length)
+    input_tensor = torch.tensor([encoded_input], dtype=torch.long)
+    
+    print(f"輸入文字: '{test_input}' -> 編碼後的 Token ID: {encoded_input}")
+    
+    # 4. 前向傳播 (Forward Pass) 測試
+    model.eval()
+    with torch.no_grad():
+        outputs = model(input_tensor)
+    
+    print("=== 模型執行成功！ ===")
+    print(f"模型輸出形狀 (Batch, Length, Vocab): {outputs.shape}")
+    print("模型已經可以正常運作與計算了！")
